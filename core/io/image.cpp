@@ -89,11 +89,13 @@ SavePNGFunc Image::save_png_func = nullptr;
 SaveJPGFunc Image::save_jpg_func = nullptr;
 SaveEXRFunc Image::save_exr_func = nullptr;
 SaveWebPFunc Image::save_webp_func = nullptr;
+SaveDDSFunc Image::save_dds_func = nullptr;
 
 SavePNGBufferFunc Image::save_png_buffer_func = nullptr;
 SaveJPGBufferFunc Image::save_jpg_buffer_func = nullptr;
 SaveEXRBufferFunc Image::save_exr_buffer_func = nullptr;
 SaveWebPBufferFunc Image::save_webp_buffer_func = nullptr;
+SaveDDSBufferFunc Image::save_dds_buffer_func = nullptr;
 
 // External loader function pointers.
 
@@ -106,6 +108,7 @@ ImageMemLoadFunc Image::_bmp_mem_loader_func = nullptr;
 ScalableImageMemLoadFunc Image::_svg_scalable_mem_loader_func = nullptr;
 ImageMemLoadFunc Image::_ktx_mem_loader_func = nullptr;
 ImageMemLoadFunc Image::_exr_mem_loader_func = nullptr;
+ImageMemLoadFunc Image::_dds_mem_loader_func = nullptr;
 
 // External VRAM compression function pointers.
 
@@ -2604,6 +2607,21 @@ Vector<uint8_t> Image::save_exr_to_buffer(bool p_grayscale) const {
 	return save_exr_buffer_func(Ref<Image>((Image *)this), p_grayscale);
 }
 
+Error Image::save_dds(const String &p_path) const {
+	if (save_dds_func == nullptr) {
+		return ERR_UNAVAILABLE;
+	}
+
+	return save_dds_func(p_path, Ref<Image>((Image *)this));
+}
+
+Vector<uint8_t> Image::save_dds_to_buffer() const {
+	if (save_dds_buffer_func == nullptr) {
+		return Vector<uint8_t>();
+	}
+	return save_dds_buffer_func(Ref<Image>((Image *)this));
+}
+
 Error Image::save_webp(const String &p_path, const bool p_lossy, const float p_quality) const {
 	if (save_webp_func == nullptr) {
 		return ERR_UNAVAILABLE;
@@ -3525,6 +3543,9 @@ void Image::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("save_jpg_to_buffer", "quality"), &Image::save_jpg_to_buffer, DEFVAL(0.75));
 	ClassDB::bind_method(D_METHOD("save_exr", "path", "grayscale"), &Image::save_exr, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("save_exr_to_buffer", "grayscale"), &Image::save_exr_to_buffer, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("save_dds", "path"), &Image::save_dds);
+	ClassDB::bind_method(D_METHOD("save_dds_to_buffer"), &Image::save_dds_to_buffer);
+
 	ClassDB::bind_method(D_METHOD("save_webp", "path", "lossy", "quality"), &Image::save_webp, DEFVAL(false), DEFVAL(0.75f));
 	ClassDB::bind_method(D_METHOD("save_webp_to_buffer", "lossy", "quality"), &Image::save_webp_to_buffer, DEFVAL(false), DEFVAL(0.75f));
 
@@ -3579,6 +3600,7 @@ void Image::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("load_bmp_from_buffer", "buffer"), &Image::load_bmp_from_buffer);
 	ClassDB::bind_method(D_METHOD("load_ktx_from_buffer", "buffer"), &Image::load_ktx_from_buffer);
 	ClassDB::bind_method(D_METHOD("load_exr_from_buffer", "buffer"), &Image::load_exr_from_buffer);
+	ClassDB::bind_method(D_METHOD("load_dds_from_buffer", "buffer"), &Image::load_dds_from_buffer);
 
 	ClassDB::bind_method(D_METHOD("load_svg_from_buffer", "buffer", "scale"), &Image::load_svg_from_buffer, DEFVAL(1.0));
 	ClassDB::bind_method(D_METHOD("load_svg_from_string", "svg_str", "scale"), &Image::load_svg_from_string, DEFVAL(1.0));
@@ -4080,6 +4102,14 @@ Error Image::load_bmp_from_buffer(const Vector<uint8_t> &p_array) {
 			ERR_UNAVAILABLE,
 			"The BMP module isn't enabled. Recompile the Godot editor or export template binary with the `module_bmp_enabled=yes` SCons option.");
 	return _load_from_buffer(p_array, _bmp_mem_loader_func);
+}
+
+Error Image::load_dds_from_buffer(const Vector<uint8_t> &p_array) {
+	ERR_FAIL_NULL_V_MSG(
+			_dds_mem_loader_func,
+			ERR_UNAVAILABLE,
+			"The DDS module isn't enabled. Recompile the Godot editor or export template binary with the `module_dds_enabled=yes` SCons option.");
+	return _load_from_buffer(p_array, _dds_mem_loader_func);
 }
 
 Error Image::load_svg_from_buffer(const Vector<uint8_t> &p_array, float scale) {
